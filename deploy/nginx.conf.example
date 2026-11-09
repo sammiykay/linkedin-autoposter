@@ -1,0 +1,14 @@
+# Replace server_name; enable TLS with certbot before remote use.
+# Set COOKIE_SECURE=true in .env when serving over HTTPS.
+server {
+    listen 80;
+    server_name autoposter.example.com;
+    client_max_body_size 20m;
+    location / {
+        proxy_pass http://127.0.0.1:8501;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60;
+    }
+}

@@ -1,0 +1,7 @@
+[Unit]
+Description=Check LinkedIn publishing health
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+[Install]
+WantedBy=timers.target

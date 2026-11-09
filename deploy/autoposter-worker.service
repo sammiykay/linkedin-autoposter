@@ -1,0 +1,22 @@
+[Unit]
+Description=LinkedIn Autoposter Worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__APP_DIR__/current
+Environment="APP_ENV_FILE=__APP_DIR__/.env" "APP_DATA_DIR=__APP_DIR__/data" "APP_MEDIA_DIR=__APP_DIR__/media" "APP_LOG_DIR=__APP_DIR__/logs" "APP_BACKUP_DIR=__APP_DIR__/backups"
+ExecStart="__APP_DIR__/current/venv/bin/python" -m app.worker
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths="__APP_DIR__"
+Restart=always
+RestartSec=10
+TimeoutStopSec=240
+
+[Install]
+WantedBy=multi-user.target
