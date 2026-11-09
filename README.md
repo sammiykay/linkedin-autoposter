@@ -25,6 +25,8 @@ Postdesk is a self-hosted, single-owner LinkedIn publishing workspace. It pairs 
 | Monitor | Inspect worker health, token status, audit history, backup results, and email delivery attempts. |
 | Run unattended | Install systemd services with boot startup, automatic process restart, daily backups, and independent monitoring. |
 
+Each dashboard page has its own skeleton layout during initial loading. Cached pages remain visible during background refreshes, while saves and imports show action-specific progress. Loading states support keyboard users and reduced-motion preferences.
+
 The app publishes to the **authorized member’s profile**. Company-page publishing, multi-user accounts, engagement analytics, and automatic image generation are not implemented. Images are currently attached through the composer; uploading them to LinkedIn is automatic when the post publishes.
 
 ## Requirements
@@ -233,6 +235,7 @@ Tests use isolated storage and mocked external requests; they do not publish rea
 ```bash
 venv/bin/pip install -r requirements-dev.txt
 venv/bin/python tests/browser_smoke.py
+venv/bin/python tests/loading_smoke.py
 ```
 
 To regenerate the documentation screenshots with realistic sample posts and simulated connection health, run `venv/bin/python scripts/capture_previews.py`. It uses temporary storage and never publishes to LinkedIn.

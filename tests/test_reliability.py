@@ -312,7 +312,8 @@ def test_real_worker_process_restart_preserves_controls_and_queue(tmp_path):
             while time.monotonic()<deadline:
                 with db.conn() as c:
                     row=c.execute('SELECT * FROM worker_state WHERE id=1').fetchone()
-                if row and row['heartbeat']>=started and row['state']=='running':break
+                # A heartbeat precedes the first authorization check; wait for both states.
+                if row and row['heartbeat']>=started and row['state']=='running' and db.controls()['auth_blocked']:break
                 if process.poll() is not None:pytest.fail('Isolated worker exited before heartbeat')
                 time.sleep(.05)
             else:pytest.fail('Worker did not report a fresh heartbeat')
