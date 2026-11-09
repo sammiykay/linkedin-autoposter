@@ -31,7 +31,7 @@ First managed installation has no previous managed release. Its pre-migration sn
 
 ## Screenshots
 
-These screenshots contain generated test posts, not live queue data.
+These screenshots show an illustrative demo workspace with realistic sample posts and simulated healthy connection status, not live queue data. Regenerate them with `venv/bin/python scripts/capture_previews.py`; no production data, real token, or LinkedIn publishing call is used.
 
 - [Dashboard](dashboard-preview.png)
 - [Composer](composer-preview.png)

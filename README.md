@@ -7,9 +7,9 @@
 
 Postdesk is a self-hosted, single-owner LinkedIn publishing workspace. It pairs a responsive HTML/CSS/JavaScript dashboard with a separate Python worker, so managing your content and publishing it do not depend on keeping a browser tab open.
 
-![Postdesk dashboard with scheduled posts, worker status, and activity history](docs/dashboard-preview.png)
+![Postdesk demo dashboard with a connected worker, six sample published posts, and an upcoming founder update](docs/dashboard-preview.png)
 
-*Screenshots use test content. Counts shown are publishing records, not LinkedIn engagement analytics.*
+*Illustrative demo workspace with sample posts and simulated connection health. Publishing counts are sample data, not live account activity or engagement analytics.*
 
 [Quick start](#quick-start-linux) · [Features](#features) · [Email alerts](#email-alerts-with-resend) · [Operations guide](docs/OPERATIONS.md) · [API reference](docs/API.md) · [License](LICENSE)
 
@@ -234,6 +234,8 @@ Tests use isolated storage and mocked external requests; they do not publish rea
 venv/bin/pip install -r requirements-dev.txt
 venv/bin/python tests/browser_smoke.py
 ```
+
+To regenerate the documentation screenshots with realistic sample posts and simulated connection health, run `venv/bin/python scripts/capture_previews.py`. It uses temporary storage and never publishes to LinkedIn.
 
 The browser script uses `/usr/bin/google-chrome` when available. Set `CHROME_BIN` to another Chromium executable or install Playwright Chromium with `venv/bin/playwright install chromium`.
 
