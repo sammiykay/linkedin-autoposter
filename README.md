@@ -7,7 +7,11 @@
 
 Postdesk is a self-hosted, single-owner LinkedIn publishing workspace. It pairs a responsive HTML/CSS/JavaScript dashboard with a separate Python worker, so managing your content and publishing it do not depend on keeping a browser tab open.
 
-![Postdesk demo dashboard with a connected worker, six sample published posts, and an upcoming founder update](docs/dashboard-preview.png)
+[![Watch the 60-second Postdesk walkthrough: composing, scheduling, calendar, and monitoring](docs/postdesk-demo-poster.jpg)](https://github.com/sammiykay/linkedin-autoposter/raw/refs/heads/main/docs/postdesk-demo.mp4)
+
+**[▶ Watch the 60-second walkthrough](https://github.com/sammiykay/linkedin-autoposter/raw/refs/heads/main/docs/postdesk-demo.mp4)** · Captioned · 1080p · MP4 (1.7 MB)
+
+See a post go from the composer and live preview to the scheduled queue, calendar, and background-worker status. Click the preview to open the video; GitHub READMEs do not support video autoplay.
 
 *Illustrative demo workspace with sample posts and simulated connection health. Publishing counts are sample data, not live account activity or engagement analytics.*
 
