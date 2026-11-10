@@ -45,6 +45,9 @@ CSV must include a header row. Excel uses the first worksheet. Both accept 1–5
 | `tags` | No | `founder;software` |
 | `source` | No | `Conference` |
 | `notes` | No | Research/context, up to 5,000 characters |
+| `message` | No | Initial message for this lead, up to 5,000 characters; supports the documented placeholders |
+
+An imported `message` becomes the initial task draft on enrollment. If blank, the campaign’s first template is used. Follow-ups use the campaign sequence. Editing the contact’s message later does not overwrite an existing task draft; edit that task separately.
 
 Other contact fields allow up to 500 characters. Unknown columns are ignored. Profiles are normalized to `https://www.linkedin.com/in/<slug>` without query strings or trailing slashes. Existing profiles are skipped by default. **Fill empty fields only** preserves populated data, status, history, and campaign progress. Any row error blocks the whole import. Previews expire after one hour; duplicate-file warnings cover 24 hours. Confirming an unchanged import twice returns its original result.
 

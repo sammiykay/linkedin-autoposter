@@ -206,3 +206,14 @@ def test_daily_digest_missing_configuration_and_concurrent_cycles(client,monkeyp
 def test_duplicate_headers_and_empty_import(client):
     for raw in (b'full_name,linkedin_url,full_name\nAda,https://www.linkedin.com/in/ada,Ada\n',b'full_name,linkedin_url\n'):
         assert preview(client,raw).status_code==400
+
+
+def test_imported_initial_message_used_for_enrollment(client):
+    raw=b'full_name,linkedin_url,first_name,message\nAda,https://www.linkedin.com/in/ada,Ada,Hi {{first_name}} - a personal note\n'
+    p=preview(client,raw).json
+    assert mutate(client,'/api/lead-imports/commit',{'token':p['token']}).json['created']==1
+    lid=client.get('/api/leads').json['items'][0]['id']
+    cid=mutate(client,'/api/campaigns',campaign_data()).json['id']
+    assert mutate(client,f'/api/campaigns/{cid}/enroll',{'lead_ids':[lid]}).status_code==200
+    task=client.get('/api/lead-tasks?scope=all').json['items'][0]
+    assert task['text']=='Hi Ada - a personal note' and not task['missing']

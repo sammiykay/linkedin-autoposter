@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 from urllib.parse import urlsplit
 from app import db, alerts
 
-FIELDS = ['full_name','linkedin_url','external_id','first_name','last_name','email','phone','company','job_title','industry','company_size','country','city','website','tags','source','notes']
+FIELDS = ['full_name','linkedin_url','external_id','first_name','last_name','email','phone','company','job_title','industry','company_size','country','city','website','tags','source','notes','message']
 SIZES = ['1-10','11-50','51-200','201-500','501-1000','1001+']
 VARIABLES = {'full_name','first_name','last_name','company','job_title','campaign_name'}
 
@@ -42,7 +42,7 @@ def contact(data):
     out={key:str(data.get(key,'') or '').strip() for key in FIELDS+['draft']}
     if not out['full_name'] or len(out['full_name'])>200: raise ValueError('Full name is required, up to 200 characters.')
     for key,value in out.items():
-        if len(value)>(5000 if key in ('notes','draft') else 500): raise ValueError(f'{key} is too long.')
+        if len(value)>(5000 if key in ('notes','draft','message') else 500): raise ValueError(f'{key} is too long.')
     url=urlsplit(out['linkedin_url'])
     if url.scheme!='https' or url.netloc.lower() not in ('linkedin.com','www.linkedin.com') or not re.fullmatch(r'/in/[A-Za-z0-9_%\-]+/?',url.path):
         raise ValueError('Use an HTTPS LinkedIn /in/ profile URL.')

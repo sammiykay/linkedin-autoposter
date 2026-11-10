@@ -172,7 +172,8 @@ def enroll(c,data,cid):
         if c.execute("SELECT 1 FROM lead_enrollments WHERE lead_id=? AND state IN ('active','paused')",(lid,)).fetchone(): raise LeadConflict('A selected contact already has an active or paused campaign.')
         eid=c.execute('INSERT INTO lead_enrollments(lead_id,campaign_id,created) VALUES(?,?,?)',(lid,cid,time.time())).lastrowid
         due=svc.next_slot(campaign,time.time())
-        c.execute('INSERT INTO lead_tasks(enrollment_id,step,due) VALUES(?,0,?)',(eid,due))
+        initial=json.loads(lead['data']).get('message','').strip() or None
+        c.execute('INSERT INTO lead_tasks(enrollment_id,step,due,draft) VALUES(?,0,?,?)',(eid,due,initial))
         c.execute("UPDATE lead_contacts SET status='enrolled',due=?,updated=? WHERE id=?",(due,time.time(),lid))
         svc.event(c,lid,'enrolled',f'Campaign {cid}');created.append(eid)
     return {'ids':created}
@@ -196,7 +197,7 @@ def task_json(c,row):
     item=dict(row);data=json.loads(row['contact_data']); campaign=json.loads(row['campaign_data'])
     text,missing=svc.render(campaign['steps'][row['step']]['template'],data,campaign['name'])
     if row['draft'] is not None:
-        text=row['draft'];missing=sorted(set(__import__('re').findall(r'{{\s*(\w+)\s*}}',text)))
+        text,missing=svc.render(row['draft'],data,campaign['name'])
     item.update(full_name=data['full_name'],company=data.get('company',''),text=text,missing=missing,campaign_name=campaign['name'],timezone=campaign['timezone'],fit=svc.fit(data,campaign['criteria']))
     item.pop('contact_data');item.pop('campaign_data');return item
 
@@ -260,7 +261,7 @@ def safe_csv(value):
 
 @bp.get('/api/lead-imports/template')
 def template():
-    example={k:'' for k in svc.FIELDS};example.update(full_name='Ada Okafor',first_name='Ada',last_name='Okafor',linkedin_url='https://www.linkedin.com/in/ada-example',company='Northstar Studio',job_title='Founder',industry='Software',company_size='11-50',country='Nigeria',city='Lagos',tags='founder;software',source='Conference',notes='Asked about content planning.')
+    example={k:'' for k in svc.FIELDS};example.update(full_name='Ada Okafor',first_name='Ada',last_name='Okafor',linkedin_url='https://www.linkedin.com/in/ada-example',company='Northstar Studio',job_title='Founder',industry='Software',company_size='11-50',country='Nigeria',city='Lagos',tags='founder;software',source='Conference',notes='Asked about content planning.',message='Hi {{first_name}}, it was good speaking about content planning. Would you be open to a follow-up?')
     if request.args.get('format')=='xlsx':
         stream=io.BytesIO();pd.DataFrame([example]).to_excel(stream,index=False);stream.seek(0)
         return send_file(stream,download_name='postdesk-leads-template.xlsx',as_attachment=True)
