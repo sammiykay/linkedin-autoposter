@@ -71,6 +71,17 @@ def main():
                 page.get_by_role('button',name='Confirm import',exact=True).click()
                 expect(page.get_by_role('tab',name='Contacts',exact=True)).to_have_attribute('aria-selected','true')
                 expect(page.locator('#lead-content')).to_contain_text('Sam Founder')
+                page.get_by_role('tab',name='Import campaigns',exact=True).click()
+                with page.expect_download() as download:
+                    page.get_by_role('link',name='Download campaign Excel template',exact=True).click()
+                assert download.value.suggested_filename=='postdesk-campaigns-template.xlsx'
+                page.locator('#campaign-import-form-file').set_input_files({'name':'campaigns.csv','mimeType':'text/csv','buffer':b'campaign_name,timezone,step,delay_days,message\nBulk founders,Africa/Lagos,1,0,Hi {{first_name}}\nBulk founders,,2,3,Following up {{first_name}}\n'})
+                page.get_by_role('button',name='Preview campaigns',exact=True).click()
+                expect(page.locator('#lead-content')).to_contain_text('1 valid campaigns')
+                page.get_by_role('button',name='Confirm campaign import',exact=True).click()
+                expect(page.get_by_role('tab',name='Campaigns',exact=True)).to_have_attribute('aria-selected','true')
+                expect(page.locator('#lead-content')).to_contain_text('Bulk founders')
+                expect(page.get_by_role('button',name='Resume campaign',exact=True)).to_be_visible()
                 # A normal polling refresh must not invalidate an in-flight Leads tab load.
                 page.get_by_role('tab',name='Campaigns',exact=True).click()
                 expect(page.get_by_role('button',name='Create campaign')).to_be_visible()

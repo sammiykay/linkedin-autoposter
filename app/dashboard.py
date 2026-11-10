@@ -42,6 +42,8 @@ def create_app(test_config=None):
     db.init()
     from app import leads
     app.register_blueprint(leads.bp)
+    from app.bulk_campaigns import bp as campaign_import_bp
+    app.register_blueprint(campaign_import_bp)
 
     @app.before_request
     def protect():

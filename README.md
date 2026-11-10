@@ -39,6 +39,8 @@ Use the separate **Leads** workspace to import CSV/Excel contacts, organize camp
 
 **This is assisted outreach:** Postdesk does not automatically send LinkedIn messages or read replies. Scoring uses transparent rules, not a trained model. [Templates, spreadsheet format, campaign setup, and reminders →](docs/LEADS.md)
 
+**Bulk upload templates:** [Simple leads](docs/templates/leads-simple.xlsx) · [Full leads and messages](docs/templates/leads-full.xlsx) · [Campaign sequences](docs/templates/campaigns.xlsx). CSV alternatives and the column guide are in the [bulk import guide](docs/LEADS.md#bulk-upload-templates). Campaign imports start paused for review.
+
 ## Requirements
 
 - **Python 3.12 or newer**, including its `venv` module.

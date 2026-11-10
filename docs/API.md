@@ -29,7 +29,7 @@ All endpoints below require the existing authenticated session. Mutations requir
 | `GET /api/leads/<id>/history` | Latest 100 activity entries |
 | `POST /api/leads/<id>/action` | `action`: `replied` or `stop`; optional `note`, reply `disposition` |
 | `GET /api/leads/export` | Formula-escaped contact CSV |
-| `GET /api/lead-imports/template?format=csv\|xlsx` | Example contact template |
+| `GET /api/lead-imports/template` | Contact template: `format=csv` or `xlsx`, `layout=simple` or `full` |
 | `POST /api/lead-imports/preview` | Multipart `file`; returns token, counts, errors, sample, previous result; CSRF required, no idempotency key needed |
 | `POST /api/lead-imports/commit` | `token`, `duplicates`: `skip`/`fill_empty`, optional `confirm_duplicate` |
 | `GET, POST /api/campaigns` | List or create campaign |
@@ -41,3 +41,13 @@ All endpoints below require the existing authenticated session. Mutations requir
 | `POST /api/lead-tasks/<id>/action` | `version`, `action`: `draft` with `text`, `snooze` with `days`, or `sent` with `confirmed:true` |
 
 Campaign configuration: `name`, `description`, IANA `timezone`, `time` (HH:MM), `weekdays` (Monday=0 through Sunday=6), `email_digest`, `criteria` lists (`job_title`, `industry`, `company_size`, `country`), and `steps` objects (`template`, `delay_days`). New lead timestamps are UTC epoch seconds; campaign display and slots use its timezone. Existing deadlines are preserved on schedule edits.
+
+### Bulk campaign imports
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /api/campaign-imports/template` | Download sample steps; `format=csv` (default) or `xlsx` |
+| `POST /api/campaign-imports/preview` | CSRF-protected multipart `file`; returns preview token, counts, row errors, duplicate names, campaign summaries, and any previous result |
+| `POST /api/campaign-imports/commit` | JSON `token`, optional `confirm_duplicate`; requires CSRF and `Idempotency-Key` |
+
+Campaign imports are atomic and always create paused campaigns. Duplicate names are skipped, never updated. A preview error returns `token:null` and blocks confirmation. Previews expire after one hour; repeated file imports within 24 hours require confirmation. Contact/campaign preview tokens are kept separate. See [spreadsheet columns and defaults](LEADS.md#bulk-campaign-uploads).

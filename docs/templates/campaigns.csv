@@ -1,0 +1,3 @@
+campaign_name,description,timezone,weekdays,reminder_time,step,delay_days,message,job_title_keywords,industries,company_sizes,countries,email_digest
+Founder conversations,A short sequence for software founders,Africa/Lagos,Mon;Wed;Fri,09:00,1,0,"Hi {{first_name}}, would you be open to a conversation about {{company}}?",Founder;CEO,Software,1-10;11-50,Nigeria,false
+Founder conversations,,,,,2,3,"Hi {{first_name}}, following up on my earlier note. Is this worth exploring?",,,,,

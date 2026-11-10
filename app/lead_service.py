@@ -9,12 +9,34 @@ from urllib.parse import urlsplit
 from app import db, alerts
 
 FIELDS = ['full_name','linkedin_url','external_id','first_name','last_name','email','phone','company','job_title','industry','company_size','country','city','website','tags','source','notes','message']
+LEAD_GUIDE = {
+    'full_name':'Required display name, up to 200 characters. Example: Ada Okafor.',
+    'linkedin_url':'Required HTTPS LinkedIn /in/ profile URL. Example: https://www.linkedin.com/in/ada-example.',
+    'external_id':'Optional CRM reference; preserve as text, e.g. 000127.',
+    'first_name':'Explicit first name for {{first_name}} personalization; not inferred automatically.',
+    'last_name':'Last name, available through {{last_name}}.',
+    'email':'Optional contact information only; no outreach email is sent.',
+    'phone':'Store as text to preserve + and leading zeros.',
+    'company':'Company name; available through {{company}}.',
+    'job_title':'Role; used for case-insensitive keyword profile-fit matching.',
+    'industry':'Industry; matched case-insensitively against campaign criteria.',
+    'company_size':'One of 1-10, 11-50, 51-200, 201-500, 501-1000, 1001+; leave blank if unknown.',
+    'country':'Country name, used for profile-fit matching; use consistent spelling.',
+    'city':'City or region, e.g. Lagos.',
+    'website':'Company website stored as text.',
+    'tags':'Semicolon-separated labels, e.g. founder;software.',
+    'source':'Lead source, e.g. Conference or Referral.',
+    'notes':'Research or context, up to 5,000 characters.',
+    'message':'Optional initial message, up to 5,000 characters. Supports {{full_name}}, {{first_name}}, {{last_name}}, {{company}}, {{job_title}}, {{campaign_name}}. Used on enrollment; follow-ups use campaign templates.',
+}
 SIZES = ['1-10','11-50','51-200','201-500','501-1000','1001+']
 VARIABLES = {'full_name','first_name','last_name','company','job_title','campaign_name'}
 
 
 def migrate(c):
-    if c.execute('SELECT 1 FROM schema_migrations WHERE version=3').fetchone(): return
+    if c.execute('SELECT 1 FROM schema_migrations WHERE version=3').fetchone():
+        migrate_bulk(c)
+        return
     statements = [
         "CREATE TABLE IF NOT EXISTS lead_contacts(id INTEGER PRIMARY KEY, profile TEXT NOT NULL UNIQUE, data TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'new', due REAL, updated REAL NOT NULL)",
         'CREATE TABLE IF NOT EXISTS lead_history(id INTEGER PRIMARY KEY, lead_id INTEGER NOT NULL, action TEXT NOT NULL, detail TEXT NOT NULL, created REAL NOT NULL)',
@@ -30,6 +52,7 @@ def migrate(c):
     for sql in statements: c.execute(sql)
     c.execute('INSERT INTO schema_migrations VALUES(3,?)',(db.now_str(),))
     db.audit(c,'schema.migrated',detail='Assisted leads workspace v3',actor='system')
+    migrate_bulk(c)
 
 
 def event(c,lid,action,detail=''):
@@ -138,3 +161,10 @@ def cycle(now=None):
             if not alerts.configured(): continue
             oid=alerts.send('Lead follow-ups ready',f'{count} assisted outreach tasks are due in campaign #{row["id"]}. Open Postdesk → Leads → Due today. Review each draft and send on LinkedIn; messages are never sent automatically.',c=c)
             c.execute('INSERT INTO lead_digests VALUES(?,?,?)',(row['id'],local.date().isoformat(),oid))
+
+
+def migrate_bulk(c):
+    if c.execute('SELECT 1 FROM schema_migrations WHERE version=4').fetchone(): return
+    c.execute('CREATE TABLE campaign_imports(id TEXT PRIMARY KEY, digest TEXT NOT NULL, data TEXT NOT NULL, created REAL NOT NULL, result TEXT)')
+    c.execute('INSERT INTO schema_migrations VALUES(4,?)',(db.now_str(),))
+    db.audit(c,'schema.migrated',detail='Bulk campaign imports v4',actor='system')

@@ -262,10 +262,12 @@ def safe_csv(value):
 @bp.get('/api/lead-imports/template')
 def template():
     example={k:'' for k in svc.FIELDS};example.update(full_name='Ada Okafor',first_name='Ada',last_name='Okafor',linkedin_url='https://www.linkedin.com/in/ada-example',company='Northstar Studio',job_title='Founder',industry='Software',company_size='11-50',country='Nigeria',city='Lagos',tags='founder;software',source='Conference',notes='Asked about content planning.',message='Hi {{first_name}}, it was good speaking about content planning. Would you be open to a follow-up?')
+    fields=['full_name','linkedin_url','first_name','company','message'] if request.args.get('layout')=='simple' else svc.FIELDS
+    example={k:example[k] for k in fields}
     if request.args.get('format')=='xlsx':
-        stream=io.BytesIO();pd.DataFrame([example]).to_excel(stream,index=False);stream.seek(0)
-        return send_file(stream,download_name='postdesk-leads-template.xlsx',as_attachment=True)
-    stream=io.StringIO();writer=csv.DictWriter(stream,fieldnames=svc.FIELDS);writer.writeheader();writer.writerow(example)
+        from app.bulk_campaigns import workbook
+        return workbook([example],fields,'Contacts','postdesk-leads-template.xlsx',[(k,'Required' if k in ('full_name','linkedin_url') else 'Optional',svc.LEAD_GUIDE[k]) for k in fields])
+    stream=io.StringIO();writer=csv.DictWriter(stream,fieldnames=fields);writer.writeheader();writer.writerow(example)
     return Response(stream.getvalue(),mimetype='text/csv',headers={'Content-Disposition':'attachment; filename=postdesk-leads-template.csv'})
 
 
@@ -280,33 +282,8 @@ def export():
 
 @bp.post('/api/lead-imports/preview')
 def preview_import():
-    upload=request.files.get('file')
-    if not upload or not upload.filename.lower().endswith(('.csv','.xlsx')): raise ValueError('Choose a CSV or XLSX file.')
-    raw=upload.read();digest=hashlib.sha256(raw).hexdigest()
-    try:
-        if upload.filename.lower().endswith('.csv'):
-            header=next(csv.reader(io.StringIO(raw.decode('utf-8-sig'))))
-            normalized=[x.strip().lower() for x in header]
-            if len(set(normalized))!=len(normalized): raise ValueError()
-            frame=pd.read_csv(io.BytesIO(raw),dtype=str,keep_default_na=False,nrows=501)
-        else:
-            with zipfile.ZipFile(io.BytesIO(raw)) as archive:
-                if sum(i.file_size for i in archive.infolist())>50*1024*1024: raise ValueError()
-                # Formulas must never silently become cached values or empty cells.
-                from openpyxl import load_workbook
-                book=load_workbook(io.BytesIO(raw),read_only=True,data_only=False)
-                try:
-                    sheet=book.active
-                    header=next(sheet.iter_rows(max_row=1,values_only=True))
-                    normalized=[str(x or '').strip().lower() for x in header]
-                    if len(set(normalized))!=len(normalized): raise ValueError()
-                    for line in sheet.iter_rows(max_row=502):
-                        if any(cell.data_type=='f' for cell in line): raise ValueError()
-                finally:book.close()
-            frame=pd.read_excel(io.BytesIO(raw),dtype=str,keep_default_na=False,nrows=501)
-    except Exception: raise ValueError('Could not read spreadsheet. Use CSV/XLSX without formulas and within the size limits.') from None
-    frame.columns=[str(x).strip().lower() for x in frame.columns]
-    if frame.columns.duplicated().any() or not {'full_name','linkedin_url'}<=set(frame.columns) or not 1<=len(frame)<=500: raise ValueError('Use unique columns, full_name and linkedin_url, and 1–500 rows.')
+    frame,digest=read_sheet()
+    if not {'full_name','linkedin_url'}<=set(frame.columns): raise ValueError('Include full_name and linkedin_url columns.')
     errors=[];rows=[];seen=set();duplicates=0
     with db.conn() as c:
         for i,row in frame.iterrows():
@@ -349,3 +326,34 @@ def commit_import(c,data):
         svc.event(c,lid,'imported');result['created']+=1
     c.execute('UPDATE lead_imports SET result=? WHERE id=?',(json.dumps(result),row['id']))
     return result
+
+
+def read_sheet():
+    upload=request.files.get('file')
+    if not upload or not upload.filename.lower().endswith(('.csv','.xlsx')): raise ValueError('Choose a CSV or XLSX file.')
+    raw=upload.read();digest=hashlib.sha256(raw).hexdigest()
+    try:
+        if upload.filename.lower().endswith('.csv'):
+            header=next(csv.reader(io.StringIO(raw.decode('utf-8-sig'))))
+            normalized=[x.strip().lower() for x in header]
+            if len(set(normalized))!=len(normalized): raise ValueError()
+            frame=pd.read_csv(io.BytesIO(raw),dtype=str,keep_default_na=False,nrows=501)
+        else:
+            with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+                if sum(i.file_size for i in archive.infolist())>50*1024*1024: raise ValueError()
+                # Formulas must never silently become cached values or empty cells.
+                from openpyxl import load_workbook
+                book=load_workbook(io.BytesIO(raw),read_only=True,data_only=False)
+                try:
+                    sheet=book.active
+                    header=next(sheet.iter_rows(max_row=1,values_only=True))
+                    normalized=[str(x or '').strip().lower() for x in header]
+                    if len(set(normalized))!=len(normalized): raise ValueError()
+                    for line in sheet.iter_rows(max_row=502):
+                        if any(cell.data_type=='f' for cell in line): raise ValueError()
+                finally:book.close()
+            frame=pd.read_excel(io.BytesIO(raw),dtype=str,keep_default_na=False,nrows=501)
+    except Exception: raise ValueError('Could not read spreadsheet. Use CSV/XLSX without formulas and within the size limits.') from None
+    frame.columns=[str(x).strip().lower() for x in frame.columns]
+    if not 1<=len(frame)<=500: raise ValueError('Use between 1 and 500 rows.')
+    return frame,digest

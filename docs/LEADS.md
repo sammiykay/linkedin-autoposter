@@ -79,3 +79,41 @@ venv/bin/python tests/leads_browser.py
 ```
 
 Tests use temporary storage. Browser tests do not start a publishing worker or contact LinkedIn. No live messaging is needed for validation.
+
+## Bulk upload templates
+
+Download ready-to-edit templates without opening the dashboard:
+
+| Template | CSV | Excel |
+| --- | --- | --- |
+| Simple leads: name, LinkedIn URL, first name, company, initial message | [Download](templates/leads-simple.csv) | [Download](templates/leads-simple.xlsx) |
+| Full leads: all supported contact, scoring, and message fields | [Download](templates/leads-full.csv) | [Download](templates/leads-full.xlsx) |
+| Campaigns: workdays, buyer criteria, and message sequences | [Download](templates/campaigns.csv) | [Download](templates/campaigns.xlsx) |
+
+Replace the illustrative sample rows before importing. Excel templates include a **Field guide** worksheet, frozen headers, filters, readable message columns, and text-formatted example cells. The full lead workbook also provides a company-size dropdown for rows 2–501. Keep identifier and phone columns formatted as Text when adding rows. The importer reads the first worksheet only.
+
+### Bulk campaign uploads
+
+Open **Leads → Import campaigns**, or select **Bulk upload campaigns** from the Campaigns tab. Upload CSV or Excel, review validation and duplicate warnings, then confirm. The limits are 500 message-step rows, 100 campaigns, 10 steps per campaign, and the existing 20 MB request / 50 MB expanded XLSX limits.
+
+Use **one row per message step**. Repeat `campaign_name` to group its steps, even if those rows are not adjacent. Campaign-wide settings may appear on the first row and remain blank on later rows. Conflicting nonblank settings for a campaign are errors. Step numbers must be consecutive starting at 1; duplicate or missing steps block the entire file. Unknown placeholders and Excel formulas are rejected.
+
+| Column | Format |
+| --- | --- |
+| `campaign_name` | Required on every row; campaigns are grouped case-insensitively |
+| `step` | Required: 1, 2, 3… up to 10 |
+| `message` | Required message template, up to 5,000 characters |
+| `delay_days` | First step: 0 (blank also defaults to 0). Later steps: explicitly supply whole days, 0–365 |
+| `timezone` | Required once per campaign; IANA name such as `Africa/Lagos` |
+| `weekdays` | Semicolon-separated `Mon;Wed;Fri`; defaults to those three days |
+| `reminder_time` | 24-hour `HH:MM`; defaults to `09:00` |
+| `description` | Optional description |
+| `job_title_keywords` | Optional semicolon-separated role keywords |
+| `industries` | Optional semicolon-separated industry names |
+| `company_sizes` | Optional semicolon-separated supported company-size bands |
+| `countries` | Optional semicolon-separated country names |
+| `email_digest` | `true` or `false`; defaults to `false` |
+
+All imported campaigns **start paused**, without enrollments or reminder emails. Review the imported sequence in Campaigns, enroll selected contacts separately, then resume when ready. Existing names are skipped case-insensitively, preserving their settings and enrollment history; importing never updates an existing campaign. Previews expire after one hour. Identical files imported within 24 hours require explicit reimport confirmation. Concurrent or retried confirmations cannot create accidental duplicate campaigns.
+
+Regenerate the checked-in example files with `venv/bin/python scripts/export_templates.py`. Generation uses temporary storage and synthetic data only.
