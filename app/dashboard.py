@@ -40,6 +40,8 @@ def create_app(test_config=None):
     if test_config:
         app.config.update(test_config)
     db.init()
+    from app import leads
+    app.register_blueprint(leads.bp)
 
     @app.before_request
     def protect():
@@ -112,10 +114,11 @@ def create_app(test_config=None):
     @app.get('/api/overview')
     def overview():
         with db.conn() as c:
+            lead_due=c.execute("SELECT count(*) FROM lead_tasks t JOIN lead_enrollments e ON e.id=t.enrollment_id JOIN lead_campaigns p ON p.id=e.campaign_id WHERE t.state='pending' AND e.state='active' AND p.paused=0 AND t.due<=?",(time.time(),)).fetchone()[0]
             counts = {r['status']:r['n'] for r in c.execute('SELECT status,COUNT(*) n FROM posts GROUP BY status')}
             upcoming = [dict(r) for r in c.execute("SELECT * FROM posts WHERE status='scheduled' ORDER BY scheduled_at LIMIT 5")]
             events = [dict(r) for r in c.execute('SELECT * FROM audit_events ORDER BY id DESC LIMIT 6')]
-        return jsonify(counts=counts, upcoming=upcoming, activity=events, controls=db.controls(), worker=db.worker_health(),
+        return jsonify(lead_due=lead_due, counts=counts, upcoming=upcoming, activity=events, controls=db.controls(), worker=db.worker_health(),
                        token_days=linkedin.token_days_left(), server_time=db.now_str(),
                        timezone=datetime.now().astimezone().tzname(), poll_seconds=config.CHECK_EVERY_SECONDS,
                        grace_hours=config.MISSED_AFTER_HOURS)

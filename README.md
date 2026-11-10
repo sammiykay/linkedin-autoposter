@@ -33,6 +33,12 @@ Each dashboard page has its own skeleton layout during initial loading. Cached p
 
 The app publishes to the **authorized member’s profile**. Company-page publishing, multi-user accounts, engagement analytics, and automatic image generation are not implemented. Images are currently attached through the composer; uploading them to LinkedIn is automatic when the post publishes.
 
+## Leads and follow-ups
+
+Use the separate **Leads** workspace to import CSV/Excel contacts, organize campaigns, personalize message drafts, and schedule daily or weekly worklists. Send each message yourself on LinkedIn, then mark it sent in Postdesk. Record replies to stop follow-ups. Optional Resend digests remind you about due work; configurable buyer criteria explain each profile-fit score.
+
+**This is assisted outreach:** Postdesk does not automatically send LinkedIn messages or read replies. Scoring uses transparent rules, not a trained model. [Templates, spreadsheet format, campaign setup, and reminders →](docs/LEADS.md)
+
 ## Requirements
 
 - **Python 3.12 or newer**, including its `venv` module.

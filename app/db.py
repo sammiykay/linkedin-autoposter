@@ -78,6 +78,9 @@ def init():
             c.execute('INSERT INTO schema_migrations VALUES(2,?)', (now_str(),))
             audit(c, 'schema.migrated', detail='Email provider receipts v2', actor='system')
 
+        from app.lead_service import migrate
+        migrate(c)
+
 
 def insert_post(c, values):
     allowed = {k: v for k, v in values.items() if k in POST_FIELDS}

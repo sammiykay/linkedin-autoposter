@@ -4,7 +4,7 @@ import signal
 import time
 from datetime import datetime, timedelta
 import requests
-from app import config, db, linkedin
+from app import config, db, linkedin, lead_service
 from app.log import get_logger
 from app.runtime import worker_lock
 
@@ -69,6 +69,10 @@ def run():
         while _running:
             try:
                 db.heartbeat()
+                try:
+                    lead_service.cycle()
+                except Exception:
+                    log.exception('Lead reminders failed; publishing cycle continues.')
                 db.recover_stuck()
                 if authorization_ready():
                     while _running and db.controls()['can_publish']:

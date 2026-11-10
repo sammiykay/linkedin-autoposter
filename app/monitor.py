@@ -3,7 +3,7 @@ import json
 import shutil
 import time
 from datetime import datetime,timedelta
-from app import config,db,alerts,linkedin
+from app import config,db,alerts,linkedin,lead_service
 
 
 def checks():
@@ -39,6 +39,10 @@ def checks():
 def run():
     db.init()
     issues=checks()
+    try:
+        lead_service.cycle()
+    except Exception:
+        issues['leads']='Lead reminder processing failed. Check service logs.'
     with db.conn() as c:
         c.execute('BEGIN IMMEDIATE')
         previous={r['name']:dict(r) for r in c.execute('SELECT * FROM incidents')}

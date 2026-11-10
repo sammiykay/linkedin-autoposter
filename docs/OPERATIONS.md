@@ -138,3 +138,7 @@ ssh -L 8501:127.0.0.1:8501 user@your-server
 For future domain access, configure nginx using `deploy/nginx.conf.example`, obtain a TLS certificate and set `COOKIE_SECURE=true` before using HTTPS. Leave it false for local HTTP/SSH tunnels. Do not expose public HTTP. OAuth secrets are never sent to the browser. Logs, audit details and backups may contain post content.
 
 LinkedIn app setup: create an app at https://www.linkedin.com/developers/apps, enable member posting and OpenID Connect sign-in products, register `http://localhost:8000/callback`, and set client ID/secret in `.env`. Posting uses official member APIs; company-page posting is not implemented. Maintain the configured `LINKEDIN_VERSION` as LinkedIn retires versions. Authorization is not permanent; renew when warned.
+
+## Leads workspace
+
+[Leads operations and spreadsheet guide](LEADS.md) documents campaign setup, owner reminders, manual send/reply recording, and recovery. Lead reminders are independent of publishing pause and authorization. Content backups include contact data, campaigns, tasks, and activity; store them privately.

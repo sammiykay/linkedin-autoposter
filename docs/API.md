@@ -16,3 +16,28 @@ Post states are `draft`, `scheduled`, `posting`, `posted`, `failed`, `missed`, a
 
 
 [Back to README](../README.md)
+
+## Assisted outreach
+
+All endpoints below require the existing authenticated session. Mutations require CSRF and a unique `Idempotency-Key`; unchanged retries return the stored result, and changed payloads with the same key return 409. Stale versions/revisions also return 409. No endpoint sends a LinkedIn message.
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /api/leads` | Paginated contacts: `page`, `search`, `status`, `campaign`, `band` |
+| `POST /api/leads` | Create contact; see [field guide](LEADS.md) |
+| `PUT /api/leads/<id>` | Replace editable contact fields; include last `updated` |
+| `GET /api/leads/<id>/history` | Latest 100 activity entries |
+| `POST /api/leads/<id>/action` | `action`: `replied` or `stop`; optional `note`, reply `disposition` |
+| `GET /api/leads/export` | Formula-escaped contact CSV |
+| `GET /api/lead-imports/template?format=csv\|xlsx` | Example contact template |
+| `POST /api/lead-imports/preview` | Multipart `file`; returns token, counts, errors, sample, previous result; CSRF required, no idempotency key needed |
+| `POST /api/lead-imports/commit` | `token`, `duplicates`: `skip`/`fill_empty`, optional `confirm_duplicate` |
+| `GET, POST /api/campaigns` | List or create campaign |
+| `PUT /api/campaigns/<id>` | Update configuration with `revision`; enrolled sequence steps are locked |
+| `POST /api/campaigns/<id>/pause` | Boolean `paused` |
+| `POST /api/campaigns/<id>/enroll` | Atomic `lead_ids` list, up to 500 |
+| `POST /api/campaigns/enrollments/<id>/action` | `pause`, `resume`, `complete`, `stop` |
+| `GET /api/lead-tasks` | `scope`: `due`/`upcoming`/`all`, optional campaign, page |
+| `POST /api/lead-tasks/<id>/action` | `version`, `action`: `draft` with `text`, `snooze` with `days`, or `sent` with `confirmed:true` |
+
+Campaign configuration: `name`, `description`, IANA `timezone`, `time` (HH:MM), `weekdays` (Monday=0 through Sunday=6), `email_digest`, `criteria` lists (`job_title`, `industry`, `company_size`, `country`), and `steps` objects (`template`, `delay_days`). New lead timestamps are UTC epoch seconds; campaign display and slots use its timezone. Existing deadlines are preserved on schedule edits.

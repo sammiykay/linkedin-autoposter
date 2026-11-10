@@ -36,7 +36,7 @@ async function api(path,options={}){
 }
 function cancelPageLoad(){if(activeRefresh){activeRefresh.controller.abort();loading.finish(activeRefresh.view);activeRefresh=null;}refreshGeneration++;$('#refresh').classList.remove('is-busy');$('#refresh').disabled=false;$('#refresh').removeAttribute('aria-busy');$('#loading').hidden=true;}
 
-function showLogin(){cancelPageLoad();postController?.abort();$('#post-loader').close();loading.reset();$('#boot-state').hidden=true;csrf='';$('#workspace').hidden=true;$('#login').hidden=false;$('#editor').close();$('#recovery').close();editorDirty=false;closeMenu();}
+function showLogin(){document.querySelectorAll('.lead-dialog[open]').forEach(d=>{d.clearDirty();d.close();});cancelPageLoad();postController?.abort();$('#post-loader').close();loading.reset();$('#boot-state').hidden=true;csrf='';$('#workspace').hidden=true;$('#login').hidden=false;$('#editor').close();$('#recovery').close();editorDirty=false;closeMenu();}
 function showWorkspace(){$('#boot-state').hidden=true;$('#login').hidden=true;$('#workspace').hidden=false;}
 function empty(target,title,description,iconName='queue'){const e=el('div','empty');e.append(icon(iconName),el('strong','',title),el('p','',description));target.append(e);}
 function closeMenu(){const wasOpen=document.body.classList.contains('menu-open');document.body.classList.remove('menu-open');if(wasOpen)$('#menu-toggle').focus();$('#menu-toggle').setAttribute('aria-expanded','false');$('#mobile-backdrop').hidden=true;}
@@ -63,8 +63,9 @@ async function refresh({background=false}={}){
   try{
     const data=await api('/api/overview',{signal:ctx.controller.signal});
     if(ctx.generation!==refreshGeneration)return;
-    overview=data;renderOverview();$('#page-error').hidden=true;
-    if(ctx.view==='queue')await renderQueue(ctx);
+    overview=data;renderOverview();window.Leads?.updateCount(data.lead_due);$('#page-error').hidden=true;
+    if(ctx.view==='leads')await window.Leads.refresh({...ctx,background});
+    else if(ctx.view==='queue')await renderQueue(ctx);
     else if(ctx.view==='calendar')await renderCalendar(ctx);
     else if(ctx.view==='activity')await renderActivity(ctx);
     else if(ctx.view==='settings')await renderSystem(ctx);
