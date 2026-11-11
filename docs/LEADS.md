@@ -24,12 +24,14 @@ Status is owner-recorded, not verified against LinkedIn. Avoid marking a message
 
 ## Spreadsheet format
 
+Only `full_name` is required. You may omit the `linkedin_url` column entirely. Contacts without a URL can still be enrolled and tracked; **Open LinkedIn inbox** lets you find the person manually. A provided URL must still be a valid LinkedIn profile.
+
 CSV must include a header row. Excel uses the first worksheet. Both accept 1–500 data rows, a 20 MB request limit, and no Excel formulas. The XLSX expanded content limit is 50 MB. Store phone numbers and external identifiers as text so Excel itself does not drop leading zeros.
 
 | Column | Required | Format / example |
 | --- | --- | --- |
 | `full_name` | Yes | `Ada Okafor`, up to 200 characters |
-| `linkedin_url` | Yes | `https://www.linkedin.com/in/ada-example` |
+| `linkedin_url` | No | `https://www.linkedin.com/in/ada-example` |
 | `external_id` | No | Your CRM identifier, e.g. `000127` |
 | `first_name` | No | `Ada`; required if your draft uses its placeholder |
 | `last_name` | No | `Okafor` |
@@ -49,7 +51,7 @@ CSV must include a header row. Excel uses the first worksheet. Both accept 1–5
 
 An imported `message` becomes the initial task draft on enrollment. If blank, the campaign’s first template is used. Follow-ups use the campaign sequence. Editing the contact’s message later does not overwrite an existing task draft; edit that task separately.
 
-Other contact fields allow up to 500 characters. Unknown columns are ignored. Profiles are normalized to `https://www.linkedin.com/in/<slug>` without query strings or trailing slashes. Existing profiles are skipped by default. **Fill empty fields only** preserves populated data, status, history, and campaign progress. Any row error blocks the whole import. Previews expire after one hour; duplicate-file warnings cover 24 hours. Confirming an unchanged import twice returns its original result.
+Other contact fields allow up to 500 characters. Unknown columns are ignored. Profiles are normalized to `https://www.linkedin.com/in/<slug>` without query strings or trailing slashes. Existing profiles are skipped by default. When no profile URL is supplied, duplicates match `external_id` first, then case-insensitive `email`. Contacts without any of those identifiers are treated as new; names alone are never merged. **Fill empty fields only** preserves populated data, status, history, and campaign progress. Any row error blocks the whole import. Previews expire after one hour; duplicate-file warnings cover 24 hours. Confirming an unchanged import twice returns its original result.
 
 Export contains contact fields, not campaign/task history. Formula-like CSV values are prefixed with an apostrophe to reduce spreadsheet formula execution risk; this may be visible when opened as plain text. Full database backups preserve campaigns and history.
 

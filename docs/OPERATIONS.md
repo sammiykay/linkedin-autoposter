@@ -142,3 +142,15 @@ LinkedIn app setup: create an app at https://www.linkedin.com/developers/apps, e
 ## Leads workspace
 
 [Leads operations and spreadsheet guide](LEADS.md) documents campaign setup, owner reminders, manual send/reply recording, and recovery. Lead reminders are independent of publishing pause and authorization. Content backups include contact data, campaigns, tasks, and activity; store them privately.
+
+## Dependency environment reuse
+
+The installer formerly created a fresh virtual environment and installed `requirements.lock` for every source release. It now caches completed environments in `.environments/`, keyed by both requirements files and the Python/runtime identity. Each release’s `venv` link points to its chosen environment. Reuse runs `pip check`, then the installer still runs the release tests and readiness checks. The first installation with the new cache, changed requirements/Python, or a failed cache check prepares a new environment; failed builds never replace the prior release’s environment.
+
+Do not run pip upgrades inside a cached environment: releases with the same dependencies share it. To repair or explicitly rebuild dependencies, use:
+
+```bash
+sudo bash deploy/install.sh --rebuild-env
+```
+
+A forced rebuild leaves previous environments available for rollback. Keep `.environments/` alongside the project and retain any environments referenced by `current`, `previous`, or releases you may roll back to. Existing per-release virtual environments remain valid. Configuration validation now runs before the release test suite, so password errors are reported earlier.

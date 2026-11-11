@@ -219,7 +219,7 @@ def test_migrate_legacy_queue_and_recover_without_retries(tmp_path,monkeypatch):
     db.init();db.init()
     assert db.get(1)['status']=='failed' and 'Check LinkedIn' in db.get(1)['error']
     assert db.controls()['paused']
-    with db.conn() as c:assert [r[0] for r in c.execute('SELECT version FROM schema_migrations ORDER BY version')]==[1,2,3,4]
+    with db.conn() as c:assert [r[0] for r in c.execute('SELECT version FROM schema_migrations ORDER BY version')]==[1,2,3,4,5]
 
 
 def test_failed_deployment_restores_previous_release_paused(monkeypatch,tmp_path):

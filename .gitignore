@@ -14,3 +14,5 @@ deployment-backups/
 deployment-state.json
 .deploy.lock
 git-publish/
+
+.environments/

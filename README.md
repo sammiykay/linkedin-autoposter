@@ -35,7 +35,7 @@ The app publishes to the **authorized member’s profile**. Company-page publish
 
 ## Leads and follow-ups
 
-Use the separate **Leads** workspace to import CSV/Excel contacts, organize campaigns, personalize message drafts, and schedule daily or weekly worklists. Send each message yourself on LinkedIn, then mark it sent in Postdesk. Record replies to stop follow-ups. Optional Resend digests remind you about due work; configurable buyer criteria explain each profile-fit score.
+Use the separate **Leads** workspace to import CSV/Excel contacts (only a full name is required; LinkedIn profile URLs are optional), organize campaigns, personalize message drafts, and schedule daily or weekly worklists. Send each message yourself on LinkedIn, then mark it sent in Postdesk. Record replies to stop follow-ups. Optional Resend digests remind you about due work; configurable buyer criteria explain each profile-fit score.
 
 **This is assisted outreach:** Postdesk does not automatically send LinkedIn messages or read replies. Scoring uses transparent rules, not a trained model. [Templates, spreadsheet format, campaign setup, and reminders →](docs/LEADS.md)
 
@@ -92,7 +92,7 @@ The application requests `openid profile w_member_social`. Your LinkedIn app mus
 sudo bash deploy/install.sh
 ```
 
-The installer creates an isolated release and virtual environment, installs pinned dependencies, runs tests, installs services and timers, and verifies dashboard and worker readiness. You do not need to create a top-level virtual environment for this installation method.
+The installer creates an isolated source release, prepares or reuses a verified dependency environment, runs tests, installs services and timers, and verifies dashboard and worker readiness. Unchanged requirements and Python reuse the cached environment without reinstalling packages; changed dependencies or Python create a new environment. The first run with environment caching still installs dependencies once. You do not need to create a top-level virtual environment for this installation method.
 
 It enables these units:
 

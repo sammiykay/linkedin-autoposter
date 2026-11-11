@@ -217,3 +217,33 @@ def test_imported_initial_message_used_for_enrollment(client):
     assert mutate(client,f'/api/campaigns/{cid}/enroll',{'lead_ids':[lid]}).status_code==200
     task=client.get('/api/lead-tasks?scope=all').json['items'][0]
     assert task['text']=='Hi Ada - a personal note' and not task['missing']
+
+
+def test_contacts_without_profile_url_and_optional_column(client):
+    first=mutate(client,'/api/leads',{'full_name':'Ada','email':'ada@example.test'});assert first.status_code==200
+    second=mutate(client,'/api/leads',{'full_name':'Other'});assert second.status_code==200
+    third=mutate(client,'/api/leads',{'full_name':'Another'});assert third.status_code==200
+    assert mutate(client,'/api/leads',{'full_name':'Ada again','email':'ADA@example.test'}).status_code==409
+    p=preview(client,b'full_name,email,message\nAda,ada@example.test,Hello\nNew,other@example.test,Hi\nJust name,,Hello\n').json
+    assert not p['errors'] and p['new']==2 and p['duplicates']==1
+    assert mutate(client,'/api/lead-imports/commit',{'token':p['token']}).json['created']==2
+    rows=client.get('/api/leads').json['items']
+    assert len(rows)==5 and all(row['profile'] is None for row in rows)
+    assert all(row['data']['linkedin_url']=='' for row in rows)
+    edit=next(row for row in rows if row['id']==second.json['id'])
+    assert mutate(client,f'/api/leads/{edit["id"]}',dict(edit['data'],linkedin_url='https://www.linkedin.com/in/other',updated=edit['updated']),'put').status_code==200
+    with db.conn() as c:assert c.execute('SELECT count(*) FROM lead_contacts WHERE profile IS NULL').fetchone()[0]==4
+
+
+def test_migration_preserves_linked_contacts_tasks_and_history(client):
+    lid,cid,task=setup_task(client)
+    # Recreate the old NOT NULL shape to verify the migration against real old rows.
+    with db.conn() as c:
+        c.execute("CREATE TABLE legacy_contacts(id INTEGER PRIMARY KEY,profile TEXT NOT NULL UNIQUE,data TEXT NOT NULL,status TEXT NOT NULL,due REAL,updated REAL NOT NULL)")
+        c.execute('INSERT INTO legacy_contacts SELECT * FROM lead_contacts');c.execute('DROP TABLE lead_contacts');c.execute('ALTER TABLE legacy_contacts RENAME TO lead_contacts')
+        c.execute('DELETE FROM schema_migrations WHERE version=5')
+    db.init();db.init()
+    assert client.get('/api/leads').json['items'][0]['id']==lid
+    assert client.get('/api/lead-tasks').json['items'][0]['id']==task['id']
+    assert client.get(f'/api/leads/{lid}/history').json['items']
+    assert mutate(client,'/api/leads',{'full_name':'No link'}).status_code==200

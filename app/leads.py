@@ -55,7 +55,7 @@ def page_args():
 
 
 def contact_json(c,row,campaign_id=None):
-    item=dict(row);item['data']=json.loads(item['data']);item['data']['linkedin_url']=item['profile']
+    item=dict(row);item['data']=json.loads(item['data']);item['data']['linkedin_url']=item['profile'] or ''
     enrollment=c.execute("SELECT e.*,p.data campaign_data FROM lead_enrollments e JOIN lead_campaigns p ON p.id=e.campaign_id WHERE lead_id=? ORDER BY CASE WHEN e.state IN ('active','paused') THEN 0 ELSE 1 END,e.id DESC LIMIT 1",(row['id'],)).fetchone()
     item['enrollment']=dict(enrollment) if enrollment else None
     cid=campaign_id or (enrollment['campaign_id'] if enrollment else None)
@@ -83,8 +83,8 @@ def listing():
 @bp.post('/api/leads')
 @mutation
 def create(c,data):
-    values=svc.contact(data);profile=values['linkedin_url']
-    if c.execute('SELECT 1 FROM lead_contacts WHERE profile=?',(profile,)).fetchone(): raise LeadConflict('This LinkedIn profile already exists.')
+    values=svc.contact(data);profile=values['linkedin_url'] or None
+    if svc.find_contact(c,values): raise LeadConflict('A contact with this profile or identifier already exists.')
     lid=c.execute('INSERT INTO lead_contacts(profile,data,updated) VALUES(?,?,?)',(profile,json.dumps(values),time.time())).lastrowid
     svc.event(c,lid,'created');return {'id':lid}
 
@@ -95,8 +95,8 @@ def edit(c,data,lid):
     old=require(c,'lead_contacts',lid)
     if data.get('updated')!=old['updated']: raise LeadConflict('This contact changed. Reload before saving.')
     values=svc.contact(data)
-    if c.execute('SELECT 1 FROM lead_contacts WHERE profile=? AND id!=?',(values['linkedin_url'],lid)).fetchone(): raise LeadConflict('This LinkedIn profile already exists.')
-    c.execute('UPDATE lead_contacts SET profile=?,data=?,updated=? WHERE id=?',(values['linkedin_url'],json.dumps(values),time.time(),lid))
+    if svc.find_contact(c,values,exclude=lid): raise LeadConflict('A contact with this profile or identifier already exists.')
+    c.execute('UPDATE lead_contacts SET profile=?,data=?,updated=? WHERE id=?',(values['linkedin_url'] or None,json.dumps(values),time.time(),lid))
     svc.event(c,lid,'edited');return {'id':lid}
 
 
@@ -266,7 +266,7 @@ def template():
     example={k:example[k] for k in fields}
     if request.args.get('format')=='xlsx':
         from app.bulk_campaigns import workbook
-        return workbook([example],fields,'Contacts','postdesk-leads-template.xlsx',[(k,'Required' if k in ('full_name','linkedin_url') else 'Optional',svc.LEAD_GUIDE[k]) for k in fields])
+        return workbook([example],fields,'Contacts','postdesk-leads-template.xlsx',[(k,'Required' if k=='full_name' else 'Optional',svc.LEAD_GUIDE[k]) for k in fields])
     stream=io.StringIO();writer=csv.DictWriter(stream,fieldnames=fields);writer.writeheader();writer.writerow(example)
     return Response(stream.getvalue(),mimetype='text/csv',headers={'Content-Disposition':'attachment; filename=postdesk-leads-template.csv'})
 
@@ -276,22 +276,24 @@ def export():
     with db.conn() as c: rows=c.execute('SELECT * FROM lead_contacts ORDER BY id').fetchall()
     stream=io.StringIO();writer=csv.DictWriter(stream,fieldnames=svc.FIELDS);writer.writeheader()
     for row in rows:
-        data=json.loads(row['data']);data['linkedin_url']=row['profile'];writer.writerow({k:safe_csv(data.get(k,'')) for k in svc.FIELDS})
+        data=json.loads(row['data']);data['linkedin_url']=row['profile'] or '';writer.writerow({k:safe_csv(data.get(k,'')) for k in svc.FIELDS})
     return Response(stream.getvalue(),mimetype='text/csv',headers={'Content-Disposition':'attachment; filename=postdesk-leads.csv'})
 
 
 @bp.post('/api/lead-imports/preview')
 def preview_import():
     frame,digest=read_sheet()
-    if not {'full_name','linkedin_url'}<=set(frame.columns): raise ValueError('Include full_name and linkedin_url columns.')
+    if 'full_name' not in frame.columns: raise ValueError('Include a full_name column. LinkedIn profile URLs are optional.')
     errors=[];rows=[];seen=set();duplicates=0
     with db.conn() as c:
         for i,row in frame.iterrows():
             try:
                 data=svc.contact(row.to_dict())
-                duplicate=data['linkedin_url'] in seen or bool(c.execute('SELECT 1 FROM lead_contacts WHERE profile=?',(data['linkedin_url'],)).fetchone())
+                identity=svc.contact_identity(data)
+                duplicate=bool(identity and identity in seen) or bool(svc.find_contact(c,data))
                 if duplicate:duplicates+=1
-                seen.add(data['linkedin_url']);rows.append(data)
+                if identity:seen.add(identity)
+                rows.append(data)
             except ValueError as e:errors.append({'row':int(i)+2,'error':str(e)})
         previous=c.execute('SELECT result FROM lead_imports WHERE digest=? AND result IS NOT NULL AND created>? ORDER BY created DESC LIMIT 1',(digest,time.time()-86400)).fetchone()
         token=secrets.token_urlsafe(24)
@@ -313,7 +315,7 @@ def commit_import(c,data):
     if previous and data.get('confirm_duplicate') is not True: raise LeadConflict('This file was imported within 24 hours. Confirm reimport explicitly.')
     result={'created':0,'updated':0,'skipped':0}
     for values in json.loads(row['data']):
-        old=c.execute('SELECT * FROM lead_contacts WHERE profile=?',(values['linkedin_url'],)).fetchone()
+        old=svc.find_contact(c,values)
         if old:
             if policy=='fill_empty':
                 merged=json.loads(old['data']);changed=False
@@ -322,7 +324,7 @@ def commit_import(c,data):
                 if changed:
                     c.execute('UPDATE lead_contacts SET data=?,updated=? WHERE id=?',(json.dumps(merged),time.time(),old['id']));svc.event(c,old['id'],'import_filled');result['updated']+=1;continue
             result['skipped']+=1;continue
-        lid=c.execute('INSERT INTO lead_contacts(profile,data,updated) VALUES(?,?,?)',(values['linkedin_url'],json.dumps(values),time.time())).lastrowid
+        lid=c.execute('INSERT INTO lead_contacts(profile,data,updated) VALUES(?,?,?)',(values['linkedin_url'] or None,json.dumps(values),time.time())).lastrowid
         svc.event(c,lid,'imported');result['created']+=1
     c.execute('UPDATE lead_imports SET result=? WHERE id=?',(json.dumps(result),row['id']))
     return result

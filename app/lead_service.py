@@ -11,7 +11,7 @@ from app import db, alerts
 FIELDS = ['full_name','linkedin_url','external_id','first_name','last_name','email','phone','company','job_title','industry','company_size','country','city','website','tags','source','notes','message']
 LEAD_GUIDE = {
     'full_name':'Required display name, up to 200 characters. Example: Ada Okafor.',
-    'linkedin_url':'Required HTTPS LinkedIn /in/ profile URL. Example: https://www.linkedin.com/in/ada-example.',
+    'linkedin_url':'Optional HTTPS LinkedIn /in/ profile URL. Example: https://www.linkedin.com/in/ada-example.',
     'external_id':'Optional CRM reference; preserve as text, e.g. 000127.',
     'first_name':'Explicit first name for {{first_name}} personalization; not inferred automatically.',
     'last_name':'Last name, available through {{last_name}}.',
@@ -67,9 +67,9 @@ def contact(data):
     for key,value in out.items():
         if len(value)>(5000 if key in ('notes','draft','message') else 500): raise ValueError(f'{key} is too long.')
     url=urlsplit(out['linkedin_url'])
-    if url.scheme!='https' or url.netloc.lower() not in ('linkedin.com','www.linkedin.com') or not re.fullmatch(r'/in/[A-Za-z0-9_%\-]+/?',url.path):
-        raise ValueError('Use an HTTPS LinkedIn /in/ profile URL.')
-    out['linkedin_url']='https://www.linkedin.com'+url.path.rstrip('/').lower()
+    if out['linkedin_url'] and (url.scheme!='https' or url.netloc.lower() not in ('linkedin.com','www.linkedin.com') or not re.fullmatch(r'/in/[A-Za-z0-9_%\-]+/?',url.path)):
+        raise ValueError('Use an HTTPS LinkedIn /in/ profile URL when providing one.')
+    if out['linkedin_url']:out['linkedin_url']='https://www.linkedin.com'+url.path.rstrip('/').lower()
     if out['company_size'] and out['company_size'] not in SIZES: raise ValueError('Choose a supported company-size band.')
     return out
 
@@ -164,7 +164,42 @@ def cycle(now=None):
 
 
 def migrate_bulk(c):
-    if c.execute('SELECT 1 FROM schema_migrations WHERE version=4').fetchone(): return
+    if c.execute('SELECT 1 FROM schema_migrations WHERE version=4').fetchone():
+        migrate_optional_profile(c)
+        return
     c.execute('CREATE TABLE campaign_imports(id TEXT PRIMARY KEY, digest TEXT NOT NULL, data TEXT NOT NULL, created REAL NOT NULL, result TEXT)')
     c.execute('INSERT INTO schema_migrations VALUES(4,?)',(db.now_str(),))
     db.audit(c,'schema.migrated',detail='Bulk campaign imports v4',actor='system')
+    migrate_optional_profile(c)
+
+
+def migrate_optional_profile(c):
+    if c.execute('SELECT 1 FROM schema_migrations WHERE version=5').fetchone(): return
+    # SQLite cannot drop NOT NULL directly. Preserve contact IDs and every field.
+    c.execute("CREATE TABLE lead_contacts_v5(id INTEGER PRIMARY KEY, profile TEXT UNIQUE, data TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'new', due REAL, updated REAL NOT NULL)")
+    c.execute("INSERT INTO lead_contacts_v5 SELECT id,NULLIF(profile,''),data,status,due,updated FROM lead_contacts")
+    c.execute('DROP TABLE lead_contacts')
+    c.execute('ALTER TABLE lead_contacts_v5 RENAME TO lead_contacts')
+    c.execute('INSERT INTO schema_migrations VALUES(5,?)',(db.now_str(),))
+    db.audit(c,'schema.migrated',detail='Optional lead profile URL v5',actor='system')
+
+
+def contact_identity(values):
+    if values.get('linkedin_url'): return ('profile',values['linkedin_url'])
+    if values.get('external_id'): return ('external_id',values['external_id'])
+    if values.get('email'): return ('email',values['email'].casefold())
+    return None
+
+
+def find_contact(c,values,exclude=None):
+    identity=contact_identity(values)
+    if identity is None: return None
+    kind,value=identity
+    if kind=='profile':
+        return c.execute('SELECT * FROM lead_contacts WHERE profile=? AND id!=?',(value,exclude or -1)).fetchone()
+    found=[]
+    for row in c.execute('SELECT * FROM lead_contacts WHERE id!=?',(exclude or -1,)):
+        candidate=str(json.loads(row['data']).get(kind,'')).strip()
+        if (candidate.casefold() if kind=='email' else candidate)==value:found.append(row)
+    if len(found)>1: raise ValueError('Multiple contacts match this identifier. Add a profile URL or use a unique external ID.')
+    return found[0] if found else None

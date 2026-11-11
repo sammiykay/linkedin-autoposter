@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # Prepare an isolated release; only switch services after its tests pass.
 set -euo pipefail
+REBUILD_ARGS=()
+case "${1:-}" in
+  '') ;;
+  --rebuild-env) REBUILD_ARGS=(--rebuild) ;;
+  *) echo 'Usage: sudo bash deploy/install.sh [--rebuild-env]'; exit 1 ;;
+esac
 [[ $EUID -eq 0 ]] || { echo 'Run with sudo.'; exit 1; }
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUN_USER="${SUDO_USER:-$(whoami)}"
@@ -24,11 +30,10 @@ RELEASE_DIR="$APP_DIR/releases/$(date +%Y%m%d-%H%M%S)-$RANDOM"
 mkdir "$RELEASE_DIR"
 cp -a "$APP_DIR/app" "$APP_DIR/tests" "$APP_DIR/deploy" "$APP_DIR/requirements.lock" "$APP_DIR/requirements.txt" "$APP_DIR/README.md" "$RELEASE_DIR/"
 chown -R "$RUN_USER:$RUN_GROUP" "$RELEASE_DIR"
-sudo -u "$RUN_USER" python3 -m venv "$RELEASE_DIR/venv"
-sudo -u "$RUN_USER" "$RELEASE_DIR/venv/bin/pip" install -r "$RELEASE_DIR/requirements.lock"
-sudo -u "$RUN_USER" bash -c 'cd "$1" && venv/bin/python -m pytest -q tests' bash "$RELEASE_DIR"
+sudo -u "$RUN_USER" python3 "$APP_DIR/deploy/prepare_env.py" --root "$APP_DIR" --release "$RELEASE_DIR" "${REBUILD_ARGS[@]}"
 export APP_ENV_FILE="$APP_DIR/.env" APP_DATA_DIR="$APP_DIR/data" APP_MEDIA_DIR="$APP_DIR/media" APP_LOG_DIR="$APP_DIR/logs" APP_BACKUP_DIR="$APP_DIR/backups"
 "$RELEASE_DIR/venv/bin/python" -c 'import sys; sys.path.insert(0, sys.argv[1]); from app import config; sys.exit(0 if len(config.APP_PASSWORD) >= 12 and config.APP_PASSWORD != "change-me-to-something-long" else "Set a unique APP_PASSWORD of at least 12 characters in .env before activation")' "$RELEASE_DIR"
+sudo -u "$RUN_USER" bash -c 'cd "$1" && venv/bin/python -m pytest -q tests' bash "$RELEASE_DIR"
 # Stage and validate complete unit files before touching installed units.
 UNIT_STAGE="$(mktemp -d)"
 trap 'rm -rf "$UNIT_STAGE"' EXIT
